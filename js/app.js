@@ -865,6 +865,7 @@
           let p = doc.data();
           currentPaymentData.push({
             ...p,
+			  comment: p.comment || '',
             quantityDisplay: (p.quantity || 0) + ' ' + (p.unit || 'quintales'),
             pricePerQuintalDisplay: 'Q' + (p.pricePerQuintal || 0).toFixed(2),
             totalDisplay: 'Q' + (p.total || 0).toFixed(2),
