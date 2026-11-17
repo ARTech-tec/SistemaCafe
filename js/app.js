@@ -1108,7 +1108,11 @@
       if (!p) return;
       const logoUrl = 'https://lh3.googleusercontent.com/d/12r5Tple_rioInO71lUVqrkpVeoft77Ei';
       let html = `<div style="text-align: center;"><img src="${logoUrl}" style="max-width: 50mm; height: auto;"><h3 style="font-size:12px;">Fraijanes</h3></div><p><strong>Recibo:</strong> ${p.receiptNumber}</p><p><strong>Cliente:</strong> ${p.clientName}</p><p><strong>Cantidad:</strong> ${p.quantity} ${p.unit}</p><p><strong>Total:</strong> Q${(p.total||0).toFixed(2)}</p>`;
-      document.getElementById('ticketDetails').innerHTML = html;
+      if (p.comment && p.comment.trim() !== '') {
+    html += `<hr><p><strong>Observaciones:</strong></p><p>${p.comment}</p>
+    `;
+		}
+		document.getElementById('ticketDetails').innerHTML = html;
       document.getElementById('thermalTicketModal').style.display = 'block';
     }
 
