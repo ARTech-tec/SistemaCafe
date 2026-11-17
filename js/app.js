@@ -865,7 +865,7 @@
           let p = doc.data();
           currentPaymentData.push({
             ...p,
-			  comment: p.comment || '',
+			comment: p.comment || '',
             quantityDisplay: (p.quantity || 0) + ' ' + (p.unit || 'quintales'),
             pricePerQuintalDisplay: 'Q' + (p.pricePerQuintal || 0).toFixed(2),
             totalDisplay: 'Q' + (p.total || 0).toFixed(2),
@@ -899,9 +899,10 @@
         html += `<tr><td>${p.receiptNumber}</td><td><b>${p.clientName}</b></td><td>${p.coffeeType}</td><td>${p.quantityDisplay}</td><td>${p.pricePerQuintalDisplay}</td><td style="color:#388E3C; font-weight:bold;">${p.totalDisplay}</td><td>${p.comment || '-'}</td><td>${p.paymentDateDisplay}</td></tr>`;
       });
       html += `</tbody></table></div><div style="margin-top:15px; padding:15px; background:#E8F5E9; border-radius:8px;"><p style="font-size:16px; font-weight:bold; color:#2E7D32;">Total Pagado: Q${totalPaidSum.toFixed(2)}</p></div>`;
-		results.innerHTML = html;
-	}	
-	function loadExpenseReportInline() {
+      results.innerHTML = html;
+    }
+
+    function loadExpenseReportInline() {
       const year = document.getElementById('reportExpenseYear').value;
       const month = document.getElementById('reportExpenseMonth').value;
       const results = document.getElementById('reportExpenseResults');
@@ -1104,11 +1105,10 @@
       if (!p) return;
       const logoUrl = 'https://lh3.googleusercontent.com/d/12r5Tple_rioInO71lUVqrkpVeoft77Ei';
       let html = `<div style="text-align: center;"><img src="${logoUrl}" style="max-width: 50mm; height: auto;"><h3 style="font-size:12px;">Fraijanes</h3></div><p><strong>Recibo:</strong> ${p.receiptNumber}</p><p><strong>Cliente:</strong> ${p.clientName}</p><p><strong>Cantidad:</strong> ${p.quantity} ${p.unit}</p><p><strong>Total:</strong> Q${(p.total||0).toFixed(2)}</p>`;
-      if (p.comment && p.comment.trim() !== '') {
-    html += `<hr><p><strong>Observaciones:</strong></p><p>${p.comment}</p>
-    `;
-		}
-		document.getElementById('ticketDetails').innerHTML = html;
+	  if (p.comment) {
+		  html += `<br><p><strong>Observaciones:</strong></p><p>${p.comment}</p>
+    `;}
+      document.getElementById('ticketDetails').innerHTML = html;
       document.getElementById('thermalTicketModal').style.display = 'block';
     }
 
