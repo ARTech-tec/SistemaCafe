@@ -899,13 +899,9 @@
         html += `<tr><td>${p.receiptNumber}</td><td><b>${p.clientName}</b></td><td>${p.coffeeType}</td><td>${p.quantityDisplay}</td><td>${p.pricePerQuintalDisplay}</td><td style="color:#388E3C; font-weight:bold;">${p.totalDisplay}</td><td>${p.comment || '-'}</td><td>${p.paymentDateDisplay}</td></tr>`;
       });
       html += `</tbody></table></div><div style="margin-top:15px; padding:15px; background:#E8F5E9; border-radius:8px;"><p style="font-size:16px; font-weight:bold; color:#2E7D32;">Total Pagado: Q${totalPaidSum.toFixed(2)}</p></div>`;
-      if (p.comment) {
-		  html += `<br><p><strong>Observaciones:</strong></p><p>${p.comment}</p>
-        `;}  
-      results.innerHTML = html;
-    }
-
-    function loadExpenseReportInline() {
+		results.innerHTML = html;
+		
+	function loadExpenseReportInline() {
       const year = document.getElementById('reportExpenseYear').value;
       const month = document.getElementById('reportExpenseMonth').value;
       const results = document.getElementById('reportExpenseResults');
