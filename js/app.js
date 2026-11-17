@@ -900,7 +900,7 @@
       });
       html += `</tbody></table></div><div style="margin-top:15px; padding:15px; background:#E8F5E9; border-radius:8px;"><p style="font-size:16px; font-weight:bold; color:#2E7D32;">Total Pagado: Q${totalPaidSum.toFixed(2)}</p></div>`;
 		results.innerHTML = html;
-		
+	}	
 	function loadExpenseReportInline() {
       const year = document.getElementById('reportExpenseYear').value;
       const month = document.getElementById('reportExpenseMonth').value;
