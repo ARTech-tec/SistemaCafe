@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Compra de Café</title>
+
+  <!-- SDKs de Firebase (Versión Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+  <!-- Inicialización de Firebase con credenciales -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBDT2rXqqaiIgepwSXOqgDyltjR0eYkPHI",
+      authDomain: "sistema-compras-de-cafe.firebaseapp.com",
+      projectId: "sistema-compras-de-cafe",
+      storageBucket: "sistema-compras-de-cafe.firebasestorage.app",
+      messagingSenderId: "1076458027655",
+      appId: "1:1076458027655:web:c70cc123357161c456d622"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
+
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="stylesheet" href="/css/styles.css"> 
+
+</head>
+<body>
+  <!-- 1. PANTALLA DE LOGIN -->
+  <div id="loginView" class="login-wrapper">
+    <div class="login-card">
+      <img src="https://lh3.googleusercontent.com/d/12r5Tple_rioInO71lUVqrkpVeoft77Ei" style="width: 60%; height: auto; margin-bottom: 15px;">
+      <h2 style="margin-bottom: 20px; color: #5D4037;">☕ Acceso al Sistema</h2>
+      
+      <form id="loginForm">
+        <div class="form-group">
+          <input type="text" id="loginUser" placeholder="Usuario" required>
+        </div>
+        <div class="form-group">
+          <input type="password" id="loginPass" placeholder="Contraseña" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Ingresar</button>
+      </form>
+      
+      <div id="loginError" style="color: red; margin-top: 15px; font-size: 13px;" class="hidden"></div>
+    </div>
+  </div>
+  
+  <!-- 2. APLICACIÓN PRINCIPAL -->
+  <div id="appView" class="container hidden">
+    <div class="header">
+      <div class="header-content">
+        <div class="header-title">
+          <img src="https://lh3.googleusercontent.com/d/12r5Tple_rioInO71lUVqrkpVeoft77Ei" style="width: 20%; height: auto; margin-bottom: 15px;">
+          <div>
+            <h1>Sistema de Compras</h1>
+            <p style="color: #666; font-size: 14px;">AR Technology</p>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-secondary role-admin" onclick="togglePriceManager()">💰 Precios</button>
+          <button class="btn btn-info" onclick="openCashModal()">📦 Caja</button>
+          <button class="btn" style="background: #134F5C; color: white;" onclick="openCashInjectionModal()">💵 Ingreso Efectivo</button>
+          <button class="btn btn-primary" onclick="toggleForm()">➕ Nueva Compra</button>
+          <button class="btn" style="background: #783F04; color: white;" onclick="openExpenseModal()">💸 Gastos</button>
+          <button class="btn role-admin" style="background: #FF6F00; color: white;" onclick="toggleReports()">📈 Reportes</button>
+          <button class="btn" style="background: #666; color: white;" onclick="logout()">🔒 Salir</button>
+        </div>
+        <img src="https://drive.google.com/thumbnail?id=1sx_dfNXMrbpsb8gMn6UFEqT-RLmbMTGV&sz=w200"  style="width: 5%; height: auto;">
+      </div>
+    </div>
+    
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">Total Compras</div>
+        <div class="stat-value" style="color: #D84315;" id="totalPurchases">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pendientes de Pago</div>
+        <div class="stat-value" style="color: #C62828;" id="pendingCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Pagado</div>
+        <div class="stat-value" style="color: #388E3C;" id="totalPaid">Q0.00</div>
+      </div>
+    </div>
+    
+    <div id="priceManager" class="card hidden">
+      <h2 style="margin-bottom: 20px;">💰 Precios Actuales por Quintal</h2>
+      <div class="form-grid" id="priceGrid"></div>
+      <div style="margin-top: 20px;">
+        <button class="btn btn-success" style="width: 100%;" onclick="savePrices()">Guardar Precios</button>
+      </div>
+      <div class="alert alert-info" style="margin-top: 15px;">
+        <strong>Nota Importante:</strong> El **Precio Beneficio** se utiliza para calcular la **Ganancia** (`Precio Beneficio` - `Precio de Compra`) al momento de procesar el pago.
+      </div>
+    </div>
+    
+    <div id="reportsSection" class="card hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>📈 Reportes del Sistema</h2>
+        <button class="btn" style="background: #999; color: white;" onclick="toggleReports()">✕ Cerrar</button>
+      </div>
+      
+      <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; flex-wrap: wrap;">
+        <button class="btn btn-info" onclick="switchReportTab('daily')" id="btnReportDaily">📅 Diario</button>
+        <button class="btn btn-secondary" onclick="switchReportTab('weekly')" id="btnReportWeekly">📊 Semanal</button>
+        <button class="btn" style="background: #FF6F00; color: white;" onclick="switchReportTab('monthly')" id="btnReportMonthly">📈 Mensual</button>
+        <button class="btn" style="background:#6A1B9A;color:white;" onclick="switchReportTab('clientmonth')" id="btnReportClientMonth">👤 Cliente Mensual</button>
+        <button class="btn" style="background: #388E3C; color: white;" onclick="switchReportTab('payments')" id="btnReportPayments">💵 Pagos Diario</button>
+        <button class="btn" style="background: #783F04; color: white;" onclick="switchReportTab('expenses')" id="btnReportExpenses">💸 Gastos</button>
+        <button class="btn" style="background: #134F5C; color: white;" onclick="switchReportTab('movements')" id="btnReportMovements">🔄 Movimientos Caja</button>
+        <button class="btn" style="background: #455A64; color: white;" onclick="switchReportTab('audit')" id="btnReportAudit">📜 Bitácora</button>
+        <button class="btn" style="background:#00695C;color:white;" onclick="switchReportTab('dashboard')" id="btnReportDashboard">📊 Dashboard</button>  
+      </div>
+      
+      <div id="reportDaily" class="report-tab">
+        <div class="form-group" style="max-width: 300px;">
+          <label>Seleccionar Fecha:</label>
+          <input type="date" id="reportDailyDate" onchange="loadDailyReportInline()">
+        </div>
+        <div id="reportDailyResults"></div>
+      </div>
+      
+      <div id="reportWeekly" class="report-tab hidden">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+          <button class="btn btn-secondary" onclick="changeWeekInline(-1)">← Anterior</button>
+          <div style="flex: 1; text-align: center; font-weight: 600; font-size: 16px;" id="weekDisplayInline">Semana Actual</div>
+          <button class="btn btn-secondary" onclick="changeWeekInline(1)">Siguiente →</button>
+        </div>
+        <button class="btn btn-info" onclick="loadCurrentWeekInline()">📍 Semana Actual</button>
+        <div id="reportWeeklyResults" style="margin-top: 20px;"></div>
+      </div>
+      
+      <div id="reportMonthly" class="report-tab hidden">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 500px; margin-bottom: 20px;">
+          <div class="form-group">
+            <label>Año:</label>
+            <select id="reportMonthlyYear" onchange="loadMonthlyReportInline()"></select>
+          </div>
+          <div class="form-group">
+            <label>Mes:</label>
+            <select id="reportMonthlyMonth" onchange="loadMonthlyReportInline()">
+              <option value="1">Enero</option>
+              <option value="2">Febrero</option>
+              <option value="3">Marzo</option>
+              <option value="4">Abril</option>
+              <option value="5">Mayo</option>
+              <option value="6">Junio</option>
+              <option value="7">Julio</option>
+              <option value="8">Agosto</option>
+              <option value="9">Septiembre</option>
+              <option value="10">Octubre</option>
+              <option value="11">Noviembre</option>
+              <option value="12">Diciembre</option>
+            </select>
+          </div>
+        </div>
+        <div id="reportMonthlyResults"></div>
+      </div>
+
+      <div id="reportPayments" class="report-tab hidden">
+        <div class="form-grid" style="margin-bottom: 15px;">
+          <div class="form-group">
+            <label>Seleccionar Fecha de Pago:</label>
+            <input type="date" id="reportPaymentsDate" onchange="loadPaymentsReportInline()">
+          </div>
+          <div class="form-group">
+            <label>🔍 Filtrar en el Reporte (Cliente o Recibo):</label>
+            <input type="text" id="reportPaymentsSearch" placeholder="Escribe para buscar..." oninput="filterPaymentsReport()">
+          </div>
+        </div>
+        <div id="reportPaymentsResults"></div>
+      </div>
+
+      <div id="reportExpenses" class="report-tab hidden">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 500px; margin-bottom: 20px;">
+          <div class="form-group">
+            <label>Año:</label>
+            <select id="reportExpenseYear" onchange="loadExpenseReportInline()"></select>
+          </div>
+          <div class="form-group">
+            <label>Mes:</label>
+            <select id="reportExpenseMonth" onchange="loadExpenseReportInline()">
+              <option value="1">Enero</option>
+              <option value="2">Febrero</option>
+              <option value="3">Marzo</option>
+              <option value="4">Abril</option>
+              <option value="5">Mayo</option>
+              <option value="6">Junio</option>
+              <option value="7">Julio</option>
+              <option value="8">Agosto</option>
+              <option value="9">Septiembre</option>
+              <option value="10">Octubre</option>
+              <option value="11">Noviembre</option>
+              <option value="12">Diciembre</option>
+            </select>
+          </div>
+        </div>
+        <div id="reportExpenseResults"></div>
+      </div>
+
+      <div id="reportMovements" class="report-tab hidden">
+        <div class="form-group" style="max-width: 300px; margin-bottom: 15px;">
+          <label>Seleccionar Fecha:</label>
+          <input type="date" id="reportMovementsDate" onchange="loadMovementsReportInline()">
+        </div>
+        <div id="reportMovementsResults"></div>
+      </div>
+    </div>
+
+      <div id="reportAudit" class="report-tab hidden">
+        <div class="form-grid" style="margin-bottom:15px;">
+            <div class="form-group">
+                <label>Buscar Usuario:</label>
+                <input type="text"
+                      id="auditSearchUser"
+                      placeholder="Ej: admin"
+                      oninput="loadAuditReport()">
+            </div>
+            <div class="form-group">
+                <label>Buscar Acción:</label>
+                <input type="text"
+                      id="auditSearchAction"
+                      placeholder="Ej: Pago"
+                      oninput="loadAuditReport()">
+            </div>
+        </div>
+        <div id="reportAuditResults"></div>
+    </div>
+
+    <div id="reportDashboard" class="report-tab hidden">
+        <h3 style="margin-bottom:20px;">
+            📊 Dashboard General
+        </h3>
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-label">
+                    Quintales Comprados
+                </div>
+                <div class="stat-value"
+                    id="dashboardQty"
+                    style="color:#D84315;">
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    Total Pagado
+                </div>
+                <div class="stat-value"
+                    id="dashboardPaid"
+                    style="color:#388E3C;">
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    Ganancia Total
+                </div>
+                <div class="stat-value"
+                    id="dashboardProfit"
+                    style="color:#1976D2;">
+                </div>
+            </div>
+        </div>
+        <div class="card" style="margin-top:20px;">
+          <h3 style="margin-bottom:15px;">
+              🏆 Top 10 Proveedores
+          </h3>
+          <div id="topProvidersTable"></div>
+      </div>
+        <div class="card">
+            <canvas id="coffeeTypeChart"></canvas>
+        </div>    
+    </div>
+
+    <div id="reportClientmonth" class="report-tab hidden">
+          <div style="display:grid;
+                      grid-template-columns:1fr 1fr 1fr;
+                      gap:15px;
+                      margin-bottom:20px;">
+              <div class="form-group">
+                  <label>Año</label>
+                  <select id="clientMonthYear"
+                          onchange="loadClientMonthReport()">
+                  </select>
+              </div>
+              <div class="form-group">
+                  <label>Mes</label>
+                  <select id="clientMonthMonth"
+                          onchange="loadClientMonthReport()">
+                      <option value="1">Enero</option>
+                      <option value="2">Febrero</option>
+                      <option value="3">Marzo</option>
+                      <option value="4">Abril</option>
+                      <option value="5">Mayo</option>
+                      <option value="6">Junio</option>
+                      <option value="7">Julio</option>
+                      <option value="8">Agosto</option>
+                      <option value="9">Septiembre</option>
+                      <option value="10">Octubre</option>
+                      <option value="11">Noviembre</option>
+                      <option value="12">Diciembre</option>
+                  </select>
+              </div>
+              <div class="form-group">
+                  <label>Cliente</label>
+                  <select id="clientMonthClient"
+                          onchange="loadClientMonthReport()">
+                      <option value="">
+                          Seleccione Cliente
+                      </option>
+                  </select>
+              </div>
+          </div>
+          <div id="clientMonthResults"></div>
+          <div style="margin-bottom:20px;">
+            <button class="btn btn-success"
+                    onclick="exportClientMonthExcel()">
+                📊 Exportar Cliente a Excel
+            </button>
+        </div>
+      </div>
+    
+    <div id="purchaseForm" class="card hidden">
+      <h2 style="margin-bottom: 20px;">Nueva Compra de Café</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Cliente</label>
+          <input type="text" id="clientName" list="clientsList" placeholder="Nombre del cliente">
+          <datalist id="clientsList"></datalist>
+        </div>
+        <div class="form-group">
+          <label>📅 Fecha de Compra</label>
+          <input type="date" id="purchaseDate">
+        </div>
+        <div class="form-group">
+          <label>Tipo de Café</label>
+          <select id="coffeeType">
+            <option value="Maduro">Maduro</option>
+            <option value="Verde">Verde</option>
+            <option value="Seco">Seco</option>
+            <option value="Pergamino">Pergamino</option>
+            <option value="Oro">Oro</option>
+            <option value="Cereza">Cereza</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Cantidad</label>
+          <input type="number" id="quantity" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>Unidad</label>
+          <select id="unit">
+            <option value="quintales">Quintales</option>
+            <option value="libras">Libras</option>
+            <option value="kg">Kilogramos</option>
+          </select>
+        </div>
+      </div>
+      <div class="alert alert-info">
+        <strong>Nota:</strong> El precio se aplicará al momento de realizar el pago según el precio vigente.
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-success" onclick="savePurchase()">Guardar Compra</button>
+        <button class="btn" style="background: #999; color: white;" onclick="toggleForm()">Cancelar</button>
+      </div>
+    </div>
+    
+    <div id="mainTableView">
+      <div class="card">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>🔍 Filtrar por Cliente</label>
+            <select id="filterClient" onchange="filterPurchases()">
+              <option value="">Todos los clientes</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>🔎 Buscar</label>
+            <input type="text" id="searchTerm" placeholder="Buscar por cliente o recibo..." oninput="filterPurchases()">
+          </div>
+        </div>
+        <div id="batchPaymentBtn" class="hidden" style="margin-top: 15px;">
+          <button class="btn btn-info" style="width: 100%;" onclick="openBatchPayment()">
+            💵 Pagar Todos los Pendientes (<span id="batchCount">0</span>)
+          </button>
+          <button class="btn btn-success" onclick="exportPurchasesExcel()">
+            📊 Exportar Compras
+          </button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Recibo</th>
+                <th>Cliente</th>
+                <th>Tipo</th>
+                <th>Cantidad</th>
+                <th>Precio/qq</th>
+                <th>P. Beneficio</th>
+                <th>Total</th>
+                <th>Ganancia</th>
+                <th>Estado</th>
+                <th>F. Compra</th>
+                <th>F. Pago</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="purchasesTable">
+              <tr>
+                <td colspan="12" class="loading">Cargando datos...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- MODALES -->
+  <div id="paymentModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Realizar Pago</h2>
+      </div>
+      <div id="paymentDetails"></div>
+      <div class="form-group" style="margin-top: 20px;">
+        <label>Precio por Quintal (Q)</label>
+        <input type="number" id="paymentPrice" step="0.01" placeholder="Ingrese precio" oninput="calculatePaymentTotal()">
+        <p style="font-size: 12px; color: #666; margin-top: 5px;" id="suggestedPrice"></p>
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label>💳 Forma de Pago</label>
+        <select id="paymentMethod">
+          <option value="Efectivo">Efectivo (Descuenta Caja)</option>
+          <option value="Transferencia">Transferencia (No afecta Caja)</option>
+          <option value="Cheque">Cheque (No afecta Caja)</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label>💬 Comentario u Observaciones (Opcional)</label>
+        <textarea id="paymentComment" rows="3" placeholder="Ej: Pago realizado por transferencia, retención aplicada, etc."></textarea>
+      </div>
+      <div id="paymentTotal" class="hidden" style="background: #C8E6C9; padding: 15px; border-radius: 8px; margin-top: 15px;">
+        <p style="font-weight: 600;">Total a pagar: <span id="totalAmount" style="font-size: 24px; color: #2E7D32;"></span></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-success" onclick="confirmPayment()">Confirmar Pago</button>
+        <button class="btn" style="background: #999; color: white;" onclick="closePaymentModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="batchPaymentModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h2>Pago de Múltiples Compras</h2>
+        <p style="color: #666;">Cliente: <span id="batchClient" style="font-weight: 600; color: #333;"></span></p>
+      </div>
+      <div id="batchPaymentList" style="max-height: 400px; overflow-y: auto;"></div>
+      <div class="batch-total">
+        <p style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: 600; font-size: 18px;">Total General:</span>
+          <span id="batchTotalAmount" style="font-size: 32px; font-weight: bold; color: #1565C0;">Q0.00</span>
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-success" onclick="confirmBatchPayment()">Confirmar Pago Total</button>
+        <button class="btn" style="background: #999; color: white;" onclick="closeBatchPaymentModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="printConfirmModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>✅ Compra Registrada</h2>
+      </div>
+      <div style="background: #E8F5E9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <p style="font-weight: 600;">Nº de Recibo: <span id="confReceiptNumber" style="color: #D84315;"></span></p>
+        <p style="margin-top: 10px; font-size: 14px;">El registro de compra se ha guardado exitosamente.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePrintConfirmModal()">Aceptar</button>
+        <button class="btn btn-primary" onclick="printConfirmedReceipt()">🖨️ Imprimir Recibo</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="thermalTicketModal" class="modal">
+    <div class="modal-content" style="max-width: 320px; font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #000; background: #fff; padding: 20px;">
+      <div id="ticketContent">
+        <div id="ticketDetails" style="line-height: 1.5;"></div>
+        <div style="text-align: center; margin-top: 20px; font-size: 11px;">
+          <p style="margin: 3px 0;">--------------------------------</p>
+          <p style="margin: 5px 0; font-weight: bold;">¡Gracias por su entrega!</p>
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top: 20px; display: flex; gap: 10px;">
+        <button class="btn btn-primary" onclick="window.print()" style="flex: 1;">🖨️ Imprimir</button>
+        <button class="btn" style="background: #999; color: white;" onclick="closeThermalTicketModal()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cashModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2>📦 Gestión de Caja</h2>
+      </div>
+      <div id="cashModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn" style="background: #999; color: white;" onclick="closeCashModalElement()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cashInjectionModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2>💵 Registrar Ingreso de Efectivo a Caja</h2>
+      </div>
+      <div class="form-group">
+        <label>Monto a Ingresar (Q):</label>
+        <input type="number" id="injectionAmount" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label>Motivo / Descripción:</label>
+        <textarea id="injectionDesc" rows="2" placeholder="Detalle del ingreso..."></textarea>
+      </div>
+      <div class="modal-footer" style="margin-top: 20px;">
+        <button class="btn btn-success" onclick="submitCashInjection()">Registrar Ingreso</button>
+        <button class="btn" style="background: #999; color: white;" onclick="closeCashInjectionModalElement()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="expenseModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2>💸 Registrar Gasto Operativo</h2>
+      </div>
+      <div class="form-group">
+        <label>Rubro de Gasto:</label>
+        <select id="expenseCategory">
+          <option value="Transporte">Transporte</option>
+          <option value="Comida">Comida</option>
+          <option value="Sueldos">Sueldos</option>
+          <option value="Combustible">Combustible</option>
+          <option value="Varios">Varios</option>
+          <option value="Anticipo">Anticipo</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label>Monto (Q):</label>
+        <input type="number" id="expenseAmount" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label>Descripción / Comentario:</label>
+        <textarea id="expenseDesc" rows="2" placeholder="Detalle del gasto..."></textarea>
+      </div>
+      <div class="modal-footer" style="margin-top: 20px;">
+        <button class="btn btn-success" onclick="submitExpense()">Guardar Gasto</button>
+        <button class="btn" style="background: #999; color: white;" onclick="closeExpenseModalElement()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+
+</body>
+</html>
