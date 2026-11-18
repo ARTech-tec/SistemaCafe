@@ -63,11 +63,7 @@
               currentUser = userData.Usuario;
 
               currentRole =
-                String(userData.Rol)
-                  .toLowerCase()
-                  .includes('admin')
-                  ? 'administrador'
-                  : 'comprador';
+                currentRole = userData.Rol || 'Comprador';
 
               applyRoleRestrictions();
             }
@@ -130,12 +126,7 @@
 
       currentUser = userData.Usuario;
 
-      currentRole =
-        String(userData.Rol)
-          .toLowerCase()
-          .includes('admin')
-          ? 'administrador'
-          : 'comprador';
+      currentRole = userData.Rol || 'Comprador';
 
       errDiv.classList.add('hidden');
 
@@ -167,15 +158,30 @@
   }
 
     function applyRoleRestrictions() {
-      if (currentRole === 'comprador') {
-        const btnPrecios = document.querySelector('button[onclick*="togglePriceManager"]');
-        if (btnPrecios) btnPrecios.style.display = 'none';
-        
-        const btnReportes = document.querySelector('button[onclick*="toggleReports"]');
-        if (btnReportes) btnReportes.style.display = 'none';
-
-        const statsPanel = document.querySelector('.stats');
-        if (statsPanel) statsPanel.style.display = 'none';
+      if (currentRole === 'SuperAdmin') {
+        const btnUsuarios =
+            document.getElementById('btnUsuarios');
+        if (btnUsuarios)
+            btnUsuarios.style.display = 'inline-block';
+        return;
+      }
+      if (currentRole === 'Administrador') {
+          return;
+      }
+      if (currentRole === 'Comprador') {
+          const btnPrecios = document.querySelector(
+              'button[onclick*="togglePriceManager"]'
+          );
+          if (btnPrecios)
+              btnPrecios.style.display = 'none';
+          const btnReportes = document.querySelector(
+              'button[onclick*="toggleReports"]'
+          );
+          if (btnReportes)
+              btnReportes.style.display = 'none';
+          const statsPanel = document.querySelector('.stats');
+          if (statsPanel)
+              statsPanel.style.display = 'none';
       }
     }
 
@@ -229,7 +235,23 @@
 
         });
 
- }
+    }
+
+    async function validarCajaAbierta() {
+      const hoy = getServerDate();
+      const snapshot = await db
+          .collection('CajaChica')
+          .where('fecha', '==', hoy)
+          .get();
+      let abierta = false;
+      snapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.estado === 'ABIERTA') {
+              abierta = true;
+          }
+      });
+      return abierta;
+    }
 
     function formatDateForDisplay(dateStr) {
       if (!dateStr) return '';
@@ -731,7 +753,12 @@
       document.getElementById('cashInjectionModal').style.display = 'none';
     }
 
-    function submitCashInjection() {
+    async function submitCashInjection() {
+      const cajaAbierta = await validarCajaAbierta();
+      if (!cajaAbierta) {
+        alert('❌ No se puede registrar un ingreso de efectivo. La caja chica no está abierta.');
+        return;
+      }
       const amount = parseFloat(document.getElementById('injectionAmount').value);
       const description = document.getElementById('injectionDesc').value;
       if (isNaN(amount) || amount <= 0) {
@@ -766,7 +793,12 @@
       document.getElementById('expenseModal').style.display = 'none';
     }
 
-    function submitExpense() {
+    async function submitExpense() {
+      const cajaAbierta = await validarCajaAbierta();
+      if (!cajaAbierta) {
+        alert('❌ No se puede registrar un gasto. La caja chica no está abierta.');
+        return;
+      }
       const rubro = document.getElementById('expenseCategory').value;
       const amount = parseFloat(document.getElementById('expenseAmount').value);
       const description = document.getElementById('expenseDesc').value;
@@ -1049,7 +1081,14 @@
       printReceipt(recNum);
     }
 
-    function openPaymentModal(purchaseId) {
+    async function openPaymentModal(purchaseId) {
+      const cajaAbierta = await validarCajaAbierta();
+      if (!cajaAbierta) {
+          alert(
+              '❌ Debe abrir la caja antes de realizar pagos.'
+          );
+          return;
+      }
       selectedPurchase = allPurchases.find(p => p.id === purchaseId);
       if (!selectedPurchase) return;
       const pPrice = currentPrices[selectedPurchase.coffeeType] ? currentPrices[selectedPurchase.coffeeType].purchasePrice : 0;
@@ -1073,7 +1112,14 @@
       document.getElementById('paymentTotal').classList.remove('hidden');
     }
 
-    function confirmPayment() {
+    async function confirmPayment() {
+      const cajaAbierta = await validarCajaAbierta();
+      if (!cajaAbierta) {
+          alert(
+              '❌ La caja está cerrada.'
+          );
+          return;
+      }
       if (!selectedPurchase) return;
       const price = parseFloat(document.getElementById('paymentPrice').value);
       const paymentMethod = document.getElementById('paymentMethod').value;
@@ -1104,7 +1150,28 @@
       const p = allPurchases.find(item => item.receiptNumber === receiptNumber);
       if (!p) return;
       const logoUrl = 'https://lh3.googleusercontent.com/d/12r5Tple_rioInO71lUVqrkpVeoft77Ei';
-      let html = `<div style="text-align: center;"><img src="${logoUrl}" style="max-width: 50mm; height: auto;"><h3 style="font-size:12px;">Fraijanes</h3></div><p><strong>Recibo:</strong> ${p.receiptNumber}</p><p><strong>Cliente:</strong> ${p.clientName}</p><p><strong>Cantidad:</strong> ${p.quantity} ${p.unit}</p><p><strong>Total:</strong> Q${(p.total||0).toFixed(2)}</p>`;
+      let html = `<div style="text-align: center;"><img src="${logoUrl}" style="max-width: 50mm; height: auto;"><h3 style="font-size:12px;">2 Avenida 5-17 zona 1, </h3><p style="margin: 2px 0; font-size: 11px;">Compra de Café</p><p style="margin: 2px 0; font-size: 11px;">--------------------------------</p></div>
+      <div style="margin-bottom: 5px;">
+            <strong>Recibo:</strong> ${p.receiptNumber}
+        </div>
+        <div style="margin-bottom: 5px;">
+            <strong>Fecha:</strong> ${p.dateDisplay || p.date}
+        </div>
+        <div style="margin-bottom: 5px;">
+            <strong>Cliente:</strong> ${p.clientName}
+        </div>
+        <div style="margin-bottom: 5px;">
+            <strong>Tipo Café:</strong> ${p.coffeeType}
+        </div>
+        <div style="margin-bottom: 5px;">
+            <strong>Cantidad:</strong> ${p.quantity} ${p.unit}
+        </div>
+        <div style="margin-bottom: 5px;">
+            <strong>Estado:</strong> ${p.paid ? 'Pagado' : 'Pendiente'}
+        </div>
+        <div style="margin-bottom: 5px;">
+            <strong>Total:</strong> Q${(p.total || 0).toFixed(2)}
+        </div>`;
 	  if (p.comment) {
 		  html += `<br><p><strong>Observaciones:</strong></p><p>${p.comment}</p>
     `;}
@@ -1116,7 +1183,14 @@
       document.getElementById('thermalTicketModal').style.display = 'none';
     }
 
-    function openBatchPayment() {
+    async function openBatchPayment() {
+      const cajaAbierta = await validarCajaAbierta();
+      if (!cajaAbierta) {
+          alert(
+              '❌ Debe abrir la caja antes de realizar pagos.'
+          );
+          return;
+      }
       const pendingPurchases = allPurchases.filter(p => !p.paid);
       if (pendingPurchases.length === 0) {
         alert('No hay compras pendientes.');
@@ -1151,7 +1225,14 @@
       document.getElementById('batchPaymentModal').style.display = 'none';
     }
 
-    function confirmBatchPayment() {
+    async function confirmBatchPayment() {
+      const cajaAbierta = await validarCajaAbierta();
+      if (!cajaAbierta) {
+          alert(
+              '❌ La caja está cerrada.'
+          );
+          return;
+      }
       const items = document.querySelectorAll('.batch-payment-item');
       if (items.length === 0) return;
       let batch = db.batch();
@@ -1696,3 +1777,72 @@
             `Cliente_${safeClient}_${monthNames[parseInt(month)]}_${year}.xlsx`
         );
     }
+
+    function toggleUsersPanel() {
+        const panel =
+            document.getElementById('usersPanel');
+        const purchaseForm =
+            document.getElementById('purchaseForm');
+        const reportsSection =
+            document.getElementById('reportsSection');
+        const priceManager =
+            document.getElementById('priceManager');
+        purchaseForm.classList.add('hidden');
+        reportsSection.classList.add('hidden');
+        priceManager.classList.add('hidden');
+        panel.classList.toggle('hidden');
+        showMainView(
+            panel.classList.contains('hidden')
+        );
+    }
+
+    async function createUser() {
+        const username =
+            document.getElementById('newUsername')
+                .value
+                .trim();
+        const password =
+            document.getElementById('newPassword')
+                .value
+                .trim();
+        const role =
+            document.getElementById('newRole')
+                .value;
+        if (!username || !password) {
+            alert(
+                'Ingrese usuario y contraseña.'
+            );
+            return;
+        }
+        try {
+            const email =
+                username + '@sistemacafe.local';
+            await firebase.auth()
+                .createUserWithEmailAndPassword(
+                    email,
+                    password
+                );
+            await db.collection('Usuarios')
+                .add({
+                    Usuario: username,
+                    Rol: role,
+                    Activo: true,
+                    FechaCreacion:
+                        getServerDate(),
+                    CreadoPor:
+                        currentUser
+                });
+            alert(
+                '✅ Usuario creado correctamente.\n\n' +
+                'Firebase ha iniciado sesión con el nuevo usuario.\n' +
+                'Vuelva a ingresar como master para continuar.'
+            );
+        } catch (error) {
+            console.error(error);
+            alert(
+                'Error al crear usuario:\n' +
+                error.message
+            );
+        }
+    }
+        
