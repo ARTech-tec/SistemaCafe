@@ -11,12 +11,12 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <!-- Inicialización de Firebase con credenciales -->
-  <script src="js/firebase-config.js"></script>
+  <script src="/js/firebase-config.js"></script>
 
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <link rel="stylesheet" href="css/styles.css"> 
+  <link rel="stylesheet" href="/css/styles.css"> 
 
 </head>
 <body>
@@ -58,6 +58,7 @@
           <button class="btn btn-primary" onclick="toggleForm()">➕ Nueva Compra</button>
           <button class="btn" style="background: #783F04; color: white;" onclick="openExpenseModal()">💸 Gastos</button>
           <button class="btn role-admin" style="background: #FF6F00; color: white;" onclick="toggleReports()">📈 Reportes</button>
+          <button class="btn" id="btnUsuarios" style="background:#1565C0;color:white;display:none;" onclick="toggleUsersPanel()">👤 Usuarios</button>
           <button class="btn" style="background: #666; color: white;" onclick="logout()">🔒 Salir</button>
         </div>
         <img src="https://drive.google.com/thumbnail?id=1sx_dfNXMrbpsb8gMn6UFEqT-RLmbMTGV&sz=w200"  style="width: 5%; height: auto;">
@@ -315,6 +316,48 @@
         </div>
       </div>
     
+      <div id="usersPanel" class="card hidden">
+        <h2 style="margin-bottom:20px;">
+            👤 Administración de Usuarios
+        </h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Usuario</label>
+                <input type="text"
+                      id="newUsername"
+                      placeholder="Ej: juan">
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password"
+                      id="newPassword"
+                      placeholder="Contraseña">
+            </div>
+            <div class="form-group">
+                <label>Rol</label>
+                <select id="newRole">
+                    <option value="Administrador">
+                        Administrador
+                    </option>
+                    <option value="Comprador">
+                        Comprador
+                    </option>
+                </select>
+            </div>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-success"
+                    onclick="createUser()">
+                Crear Usuario
+            </button>
+            <button class="btn"
+                    style="background:#999;color:white;"
+                    onclick="toggleUsersPanel()">
+                Cerrar
+            </button>
+        </div>
+      </div>
+
     <div id="purchaseForm" class="card hidden">
       <h2 style="margin-bottom: 20px;">Nueva Compra de Café</h2>
       <div class="form-grid">
@@ -563,7 +606,7 @@
     </div>
   </div>
 
-  <script src="js/app.js"></script>
+  <script src="/js/app.js"></script>
 
 </body>
 </html>
