@@ -1,13 +1,10 @@
-    const firebaseConfig = {
-    apiKey: "AIzaSyC6p-q8X7s56jTRqXCcKdayZZ8iqoA4ELE",
-    authDomain: "comerlaesperanza.firebaseapp.com",
-    projectId: "comerlaesperanza",
-    storageBucket: "comerlaesperanza.firebasestorage.app",
-    messagingSenderId: "265475520886",
-    appId: "1:265475520886:web:45739e3c393028a5c7a257"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
+  const firebaseConfig = {
+      apiKey: "AIzaSyBDT2rXqqaiIgepwSXOqgDyltjR0eYkPHI",
+      authDomain: "sistema-compras-de-cafe.firebaseapp.com",
+      projectId: "sistema-compras-de-cafe",
+      storageBucket: "sistema-compras-de-cafe.firebasestorage.app",
+      messagingSenderId: "1076458027655",
+      appId: "1:1076458027655:web:c70cc123357161c456d622"
+    };
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-  
