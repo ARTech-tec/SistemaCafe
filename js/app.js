@@ -829,64 +829,206 @@
     }
 
     function loadDailyReportInline() {
-      const date = document.getElementById('reportDailyDate').value;
-      const results = document.getElementById('reportDailyResults');
-      if (!date || !results) return;
-      results.innerHTML = '<p style="text-align:center; padding:20px;">Cargando...</p>';
-
-      db.collection('Compras').where('date', '==', date).get().then(snapshot => {
-        let purchases = [];
-        let totalAmount = 0;
-        let totalQty = 0;
-        let totalProfit = 0;
-
-        snapshot.forEach(doc => {
-          let p = doc.data();
-          totalQty += parseFloat(p.quantity) || 0;
-          if (p.paid) {
-            totalAmount += parseFloat(p.total) || 0;
-            totalProfit += parseFloat(p.profit) || 0;
-          }
-          purchases.push({
-            ...p,
-            quantityDisplay: (p.quantity || 0) + ' ' + (p.unit || 'quintales'),
-            totalDisplay: 'Q' + (p.total || 0).toFixed(2),
-          });
-        });
-
-        if (purchases.length === 0) {
-          results.innerHTML = '<p style="text-align:center; padding:20px; color:#666;">No hay compras en esta fecha.</p>';
-          return;
-        }
-
-        let html = `
-          <div class="stats" style="margin: 15px 0;">
-            <div class="stat-card">
-              <div class="stat-label">Quintales Día</div>
-              <div class="stat-value" style="color: #D84315;">${totalQty.toFixed(2)} qq</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Total Pagado</div>
-              <div class="stat-value" style="color: #388E3C;">Q${totalAmount.toFixed(2)}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Ganancia</div>
-              <div class="stat-value" style="color: #1976D2;">Q${totalProfit.toFixed(2)}</div>
-            </div>
-          </div>
-          <div class="table-container">
-            <table>
-              <thead>
-                <tr><th>Recibo</th><th>Cliente</th><th>Tipo</th><th>Cantidad</th><th>Total</th><th>Estado</th></tr>
-              </thead>
-              <tbody>
-        `;
-        purchases.forEach(p => {
-          html += `<tr><td>${p.receiptNumber}</td><td><b>${p.clientName}</b></td><td>${p.coffeeType}</td><td>${p.quantityDisplay}</td><td><b>${p.totalDisplay}</b></td><td><span class="badge ${p.paid ? 'badge-success' : 'badge-danger'}">${p.paid ? 'Pagado' : 'Pendiente'}</span></td></tr>`;
-        });
-        html += `</tbody></table></div>`;
-        results.innerHTML = html;
-      });
+        const date = document.getElementById('reportDailyDate').value;
+        const results = document.getElementById('reportDailyResults');
+        if (!date || !results) return;
+        results.innerHTML =
+            '<p style="text-align:center; padding:20px;">Cargando...</p>';
+        db.collection('Compras')
+            .where('date', '==', date)
+            .get()
+            .then(snapshot => {
+                let purchases = [];
+                let totalAmount = 0;
+                let totalQty = 0;
+                let totalProfit = 0;
+                let coffeeSummary = {};
+                snapshot.forEach(doc => {
+                    let p = doc.data();
+                    totalQty += parseFloat(p.quantity) || 0;
+                    const tipo = p.coffeeType || 'Sin Tipo';
+                    if (!coffeeSummary[tipo]) {
+                        coffeeSummary[tipo] = {
+                          quintales: 0,
+                          pagado: 0,
+                          pendiente: 0
+                      };
+                    }
+                    coffeeSummary[tipo].quintales +=
+                        parseFloat(p.quantity) || 0;
+                    if (p.paid) {
+                        coffeeSummary[tipo].pagado +=
+                            parseFloat(p.total) || 0;
+                        totalAmount +=
+                            parseFloat(p.total) || 0;
+                        totalProfit +=
+                            parseFloat(p.profit) || 0;
+                    } else {
+                        coffeeSummary[tipo].pendiente +=
+                            parseFloat(p.total) || 0;
+                    }
+                    purchases.push({
+                        ...p,
+                        quantityDisplay:
+                            (p.quantity || 0) +
+                            ' ' +
+                            (p.unit || 'quintales'),
+                        totalDisplay:
+                            'Q' +
+                            (p.total || 0).toFixed(2)
+                    });
+                });
+                if (purchases.length === 0) {
+                    results.innerHTML =
+                        '<p style="text-align:center; padding:20px; color:#666;">No hay compras en esta fecha.</p>';
+                    return;
+                }
+                let coffeeTotalsHtml = `
+                    <div style="
+                        margin:15px 0;
+                        padding:15px;
+                        background:#FFF8E1;
+                        border-radius:8px;
+                    ">
+                        <h4 style="margin-bottom:10px;">
+                            ☕ Resumen por Tipo de Café
+                        </h4>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Quintales</th>
+                                        <th> Pagado</th>
+                                        <th> Pendiente</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+                let totalCoffeeQty = 0;
+                let totalCoffeePaid = 0;
+                let totalCoffeePending = 0;
+                Object.keys(coffeeSummary).forEach(tipo => {
+                    totalCoffeeQty +=
+                        coffeeSummary[tipo].quintales;
+                    totalCoffeePaid +=
+                        coffeeSummary[tipo].pagado;
+                    totalCoffeePending +=
+                        coffeeSummary[tipo].pendiente;
+                    coffeeTotalsHtml += `
+                        <tr>
+                              <td>${tipo}</td>
+                              <td>
+                                  ${coffeeSummary[tipo]
+                                      .quintales
+                                      .toFixed(2)} qq
+                              </td>
+                              <td style="color:#2E7D32;font-weight:bold;">
+                                  Q${coffeeSummary[tipo]
+                                      .pagado
+                                      .toFixed(2)}
+                              </td>
+                              <td style="color:#C62828;font-weight:bold;">
+                                  Q${coffeeSummary[tipo]
+                                      .pendiente
+                                      .toFixed(2)}
+                              </td>
+                            </tr>
+                    `;
+                });
+                coffeeTotalsHtml += `
+                        <tr style="
+                            font-weight:bold;
+                            background:#F5F5F5;
+                        ">
+                            <td>TOTAL</td>
+                            <td>
+                                ${totalCoffeeQty.toFixed(2)} qq
+                            </td>
+                            <td>
+                                Q${totalCoffeePaid.toFixed(2)}
+                            </td>
+                            <td>
+                                Q${totalCoffeePending.toFixed(2)}
+                            </td>
+                        </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                let html = `
+                    <div class="stats" style="margin:15px 0;">
+                        <div class="stat-card">
+                            <div class="stat-label">
+                                Quintales Día
+                            </div>
+                            <div class="stat-value"
+                                style="color:#D84315;">
+                                ${totalQty.toFixed(2)} qq
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">
+                                Total Pagado
+                            </div>
+                            <div class="stat-value"
+                                style="color:#388E3C;">
+                                Q${totalAmount.toFixed(2)}
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">
+                                Ganancia
+                            </div>
+                            <div class="stat-value"
+                                style="color:#1976D2;">
+                                Q${totalProfit.toFixed(2)}
+                            </div>
+                        </div>
+                    </div>
+                    ${coffeeTotalsHtml}
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Recibo</th>
+                                    <th>Cliente</th>
+                                    <th>Tipo</th>
+                                    <th>Cantidad</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                purchases.forEach(p => {
+                    html += `
+                        <tr>
+                            <td>${p.receiptNumber}</td>
+                            <td>
+                                <b>${p.clientName}</b>
+                            </td>
+                            <td>${p.coffeeType}</td>
+                            <td>${p.quantityDisplay}</td>
+                            <td>
+                                <b>${p.totalDisplay}</b>
+                            </td>
+                            <td>
+                                <span class="badge ${p.paid ? 'badge-success' : 'badge-danger'}">
+                                    ${p.paid ? 'Pagado' : 'Pendiente'}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                });
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                results.innerHTML = html;
+            });
     }
 
     function loadPaymentsReportInline() {
