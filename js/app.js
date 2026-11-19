@@ -11,6 +11,7 @@
     let allClients = [];
     let currentPrices = {}; 
     let selectedPurchase = null;
+	let selectedPurchaseEdit = null;
     let currentWeekStartInline = null;
     let currentUser = null;
     let currentRole = null;
@@ -287,6 +288,9 @@
         const badgeText = p.paid ? 'Pagado' : 'Pendiente';
         
         let actionButtons = '';
+		if (currentRole === 'SuperAdmin' && !p.paid) {
+        actionButtons += `<button class="btn btn-warning" style=" padding:6px 12px; font-size:11px; margin-right:5px;" onclick="openEditPurchase('${p.id}')">✏️ Editar</button>`;
+        }
         if (!p.paid) {
           actionButtons += `<button class="btn btn-success" style="padding:6px 12px; font-size:11px; margin-right: 5px;" onclick="openPaymentModal('${p.id}')">💵 Pagar</button>`;
         }
@@ -1845,4 +1849,128 @@
             );
         }
     }
-        
+
+	function openEditPurchase(id) {
+        const compra =
+            allPurchases.find(
+                p => p.id === id
+            );
+        if (!compra) return;
+        selectedPurchaseEdit = compra;
+        document.getElementById(
+            'editClientName'
+        ).value = compra.clientName;
+        document.getElementById(
+            'editPurchaseDate'
+        ).value = compra.date;
+        document.getElementById(
+            'editCoffeeType'
+        ).value = compra.coffeeType;
+        document.getElementById(
+            'editQuantity'
+        ).value = compra.quantity;
+        document.getElementById(
+            'editUnit'
+        ).value = compra.unit;
+        document.getElementById(
+            'editReason'
+        ).value = '';
+        document.getElementById(
+            'editPurchaseModal'
+        ).style.display = 'block';
+    }
+
+    function closeEditPurchaseModal() {
+        document.getElementById(
+            'editPurchaseModal'
+        ).style.display = 'none';
+        selectedPurchaseEdit = null;
+    }
+
+    async function saveEditedPurchase() {
+        if (!selectedPurchaseEdit) return;
+        const clientName =
+            document.getElementById(
+                'editClientName'
+            ).value.trim();
+        const purchaseDate =
+            document.getElementById(
+                'editPurchaseDate'
+            ).value;
+        const coffeeType =
+            document.getElementById(
+                'editCoffeeType'
+            ).value;
+        const quantity =
+            parseFloat(
+                document.getElementById(
+                    'editQuantity'
+                ).value
+            );
+        const unit =
+            document.getElementById(
+                'editUnit'
+            ).value;
+        const reason =
+            document.getElementById(
+                'editReason'
+            ).value.trim();
+        if (
+            !clientName ||
+            !purchaseDate ||
+            isNaN(quantity) ||
+            quantity <= 0
+        ) {
+            alert(
+                'Complete todos los campos correctamente.'
+            );
+            return;
+        }
+        if (!reason) {
+            alert(
+                'Debe indicar el motivo de la modificación.'
+            );
+            return;
+        }
+        try {
+            const detalleAnterior =
+                `Cliente: ${selectedPurchaseEdit.clientName}
+                  Fecha: ${selectedPurchaseEdit.date}
+                  Tipo: ${selectedPurchaseEdit.coffeeType}
+                  Cantidad: ${selectedPurchaseEdit.quantity}
+                  Unidad: ${selectedPurchaseEdit.unit}`;
+            const detalleNuevo =
+                `Cliente: ${clientName}
+                  Fecha: ${purchaseDate}
+                  Tipo: ${coffeeType}
+                  Cantidad: ${quantity}
+                  Unidad: ${unit}`;
+
+            await db
+                .collection('Compras')
+                .doc(selectedPurchaseEdit.id)
+                .update({
+                    clientName: clientName,
+                    date: purchaseDate,
+                    coffeeType: coffeeType,
+                    quantity: quantity,
+                    unit: unit
+                });
+
+            registrarAuditoria(
+                'Edición de compra',
+                selectedPurchaseEdit.receiptNumber,
+                `Motivo: ${reason} | ANTES: ${detalleAnterior} | DESPUÉS: ${detalleNuevo}`
+            );
+            alert(
+                '✅ Compra actualizada correctamente.'
+            );
+            closeEditPurchaseModal();
+            loadData();
+        } catch (error) {
+            console.error(error);
+            alert(
+                'Error al actualizar la compra.'
+            );
+        }
+      }
